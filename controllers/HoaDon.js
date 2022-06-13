@@ -1,0 +1,171 @@
+var sql = require("mssql");
+
+function getHoaDon(req, res, next) {
+
+  console.log("Query Nhap Kho", req.query)
+  const date = req.query.date
+  let addSql =""
+  if(date)
+   addSql = ` and HoaDon.NgayLap = '${date}'`
+
+  var request = new sql.Request();
+  var sql_query =
+    "Select *,PhuongThucThanhToan.IDPhuongThuc as IDPT from HoaDon,PhuongThucThanhToan where HoaDon.IDPhuongThuc=PhuongThucThanhToan.IDPhuongThuc"+addSql;
+  request.query(sql_query, function (err, recordset) {
+    if (err) res.send(err);
+    const data = recordset.recordset
+    data.forEach(item =>{
+      // console.log(item.NgayLap.getDate())
+      const d = new Date(item.NgayLap)
+      const  date = `${item.NgayLap.getDate()}/${item.NgayLap.getMonth()+1}/${item.NgayLap.getFullYear()}`;
+      item.NgayLap = date
+      
+      item.NgayLapFormat =  d.toISOString().substring(0,10)
+    })
+
+    res.send({ result: data  });
+  });
+}
+function getChiTietHoaDon(req, res, next) {
+    const id = req.params.id
+  var request = new sql.Request();
+  var sql_query =
+    `Select * from CT_HoaDon, MonAn where IDHoaDon = ${id} and CT_HoaDon.IDMonAn = MonAn.IDMon`;
+  request.query(sql_query, function (err, recordset) {
+    if (err) res.send(err);
+    const data = recordset.recordset
+
+    res.send({ result: data  });
+  });
+}
+function getPhuongThuc(req, res, next) {
+  var request = new sql.Request();
+  var sql_query =
+    `Select * from PhuongThucThanhToan`;
+  request.query(sql_query, function (err, recordset) {
+    if (err) res.send(err);
+    const data = recordset.recordset
+
+    res.send({ result: data  });
+  });
+}
+
+function updateHoaDon(req, res, next) {
+  const ID = req.params.id
+  console.log("ID: "+ID)
+  data =  req.body.data
+  console.log("data", data)
+  // console.log(req.body.data.chiTiet)
+
+  xoaCTHoaDonCu(ID)
+
+  data.chiTiet.forEach(item => {
+    insertHoaDon(item,ID)
+  });
+
+  var request = new sql.Request();
+
+ var sql_query =`Update HoaDon set IDBanAn =${data.idBanAn},IDPhuongThuc=${data.idPTTT},NgayLap='${data.ngayLap}' where IDHoaDon=${ID};`;
+  request.query(sql_query, function (err, resp) {
+    if (err) console.error(err);
+  });
+
+  
+
+  res.send({ok:true})
+}
+async function insertHoaDon(item, IDHoaDon) {
+  var request = new sql.Request();
+  console.log(item)
+  var GiaBan = await getGiaBan(item.idMonAn)
+  console.log(GiaBan)
+  
+  var sql_query =
+    `insert into CT_HoaDon(IDHoaDon,IDMonAn,SoLuong,GiaBan) values(${IDHoaDon},${item.idMonAn},${item.soLuong},${GiaBan});
+    `;
+  request.query(sql_query, function (err, recordset) {
+    if (err) {
+        console.log(err)
+      return;
+      };
+  });
+}
+async function getGiaBan(id) {
+  var request = new sql.Request();
+  console.log("ID Mon an:", id)
+  
+  var sql_query =
+    `Select GiaBan from MonAn where IDMon = ${id}`;
+    return new Promise((resolve, reject)=>{
+      request.query(sql_query, function (err, recordset) {
+    if (err) {
+        console.log(err)
+      return;
+      };
+      resolve(recordset.recordset[0].GiaBan)
+  });
+    })
+  
+}
+
+function xoaCTHoaDonCu(ID){
+  var request = new sql.Request();
+
+ var sql_query =`delete from CT_HoaDon where IDHoaDon=${ID};`;
+  request.query(sql_query, function (err, resp) {
+    if (err) console.error(err);
+  });
+}
+
+function getDanhSachBan(req, res, next) {
+var request = new sql.Request();
+var sql_query =
+  `Select * from BanAn`;
+request.query(sql_query, function (err, recordset) {
+  if (err) res.send(err);
+  const data = recordset.recordset
+
+  res.send({ result: data  });
+});
+}
+
+function getMonAn(req, res, next) {
+  var request = new sql.Request();
+  var sql_query =
+    `Select * from MonAn`;
+  request.query(sql_query, function (err, recordset) {
+    if (err) res.send(err);
+    const data = recordset.recordset
+
+    res.send({ result: data  });
+  });
+}
+
+function deleteHoaDon(req, res, next) {
+  const ID = req.params.id
+  console.log(ID)
+
+  xoaCTHoaDonCu(ID)
+  var request = new sql.Request();
+
+ var sql_query =`delete from HoaDon where IDHoaDon=${ID}`;
+  request.query(sql_query, function (err, resp) {
+    if (err) throw err;
+    res.send({ok:true})
+  });
+
+  
+
+  
+}
+
+
+module.exports = {
+    getHoaDon,
+    getChiTietHoaDon,
+    getMonAn,
+    getDanhSachBan,
+    updateHoaDon,
+    getPhuongThuc,
+    deleteHoaDon
+};
