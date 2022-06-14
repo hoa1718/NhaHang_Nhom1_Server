@@ -5,7 +5,7 @@ const path= require('path');
 const morgan= require('morgan');
 const route = require('./routes');
 const cors = require('cors')
-const port = process.env.port || 4000;
+const port = process.env.4000;
 require('dotenv').config()
 const db= require('./config/dbconnect')
 const cookieParser = require('cookie-parser')
